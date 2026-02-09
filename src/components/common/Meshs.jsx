@@ -5,7 +5,7 @@ function CubeMesh() {
   return (
     <mesh position={[-2, 0, 0]}>
       <boxGeometry args={[1,1,1]} />
-      <meshStandardMaterial color="orange" wireframe />
+      <meshStandardMaterial color="white" wireframe />
     </mesh>
   );
 }
@@ -47,7 +47,7 @@ function RotatingBox() {
 
 function SurfaceMesh() {
   return (
-    <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[10, 10]} />
       <meshStandardMaterial color="green" />
     </mesh>
