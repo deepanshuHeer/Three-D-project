@@ -1,9 +1,13 @@
 import { useFrame } from '@react-three/fiber';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 function CubeMesh() {
+  const cubeRef = useRef();
+  useFrame((state, delta) => {
+    cubeRef.current.rotation.x += 0.01;
+  });
   return (
-    <mesh position={[-2, 0, 0]}>
+    <mesh ref={cubeRef} position={[-2, 0, 0]}>
       <boxGeometry args={[1,1,1]} />
       <meshStandardMaterial color="white" wireframe />
     </mesh>
@@ -11,19 +15,33 @@ function CubeMesh() {
 }
 
 function SphereMesh() {
+  const [isHover, setIsHover] = useState(false);
+  const sphereRef = useRef();
+  useFrame((state)=>{
+    sphereRef.current.position.y = Math.sin(state.clock.elapsedTime);
+  })
   return (
-    <mesh position={[2, 0, 0]}>
+    <mesh 
+      onPointerOver={()=> setIsHover(true)}
+      onPointerOut={()=> setIsHover(false)}
+    ref={sphereRef} position={[2, 0, 0]}>
       <sphereGeometry args={[0.7, 16, 16]} />
-      <meshStandardMaterial color="blue" wireframe />
+      <meshStandardMaterial color={isHover ? "yellow" : "blue"} wireframe />
     </mesh>
   );
 }
 
+
 function ConeMesh() {
+  const conRef = useRef();
+  useFrame((state,delta)=>{
+     const scale = 1 + Math.sin(state.clock.elapsedTime) * 0.2;
+  conRef.current.scale.set(scale, scale, scale);
+  })
   return (
-    <mesh position={[0, 0, 0]}>
+    <mesh ref={conRef} position={[0, 0, 0]}>
       <coneGeometry args={[0.7, 1.5, 32]} />
-      <meshStandardMaterial color="hotpink" wireframe/>
+      <meshStandardMaterial color="hotpink" />
     </mesh>
   );
 }   
@@ -63,7 +81,11 @@ function WireframeBox() {
   );
 }
 
-export { ConeMesh, CubeMesh, RotatingBox, SphereMesh, SurfaceMesh ,WireframeBox, Man};
+
+
+
+export { ConeMesh,Ground, CubeMesh, RotatingBox, SphereMesh, SurfaceMesh ,WireframeBox, Man};
+
 
 
 

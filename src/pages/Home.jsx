@@ -1,10 +1,13 @@
-import Screen from "../components/common/Screen"
-
-const Home = ()=>{
+import HumanCharacter from "../components/models/HumanModel"
+import Screen from "../components/Screen"
+import Maze from "../components/environment/Maze"
+const Home = () => {
 
     return <>
-    <h1>Sceen</h1>
-    <Screen/>
+        <Screen>
+            <HumanCharacter />
+            <Maze/>
+        </Screen>
     </>
 }
 
