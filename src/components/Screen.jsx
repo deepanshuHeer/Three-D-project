@@ -5,13 +5,34 @@ import BgLight from './light/BgLight';
 import FillLight from './light/FillLight';
 import KeyLight from './light/KeyLight';
 import { Physics } from '@react-three/rapier';
+import { useEffect, useState } from 'react';
+import CameraManager from './camera/CameraManager';
 
-function Screen({children}) {
+function Screen({children, rigidBodyRef}) {
+
+  const [cameraMode, setCameraMode] = useState("third");
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key.toLowerCase() === "c") {
+        setCameraMode((prev) =>
+          prev === "third"
+            ? "fps"
+            : prev === "fps"
+            ? "orbit"
+            : "third"
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
 
   return (
     <div id="canvas-container" style={{ height: "80vh", width: "100vw", background: "red" }} >
       <Canvas shadows>
-    <Physics>
+    <Physics debug>
 
    
         <ambientLight intensity={0.6} />
@@ -23,16 +44,12 @@ function Screen({children}) {
         <BgLight />
       {children}
         <Ground />
-        <OrbitControls
-          target={[0, 0, 0]}
-          enablePan={false}
-          minDistance={4}
-          maxDistance={10}
-          minPolarAngle={Math.PI / 6}
-        />
+
+ <CameraManager mode={cameraMode} targetRef={rigidBodyRef} />
+
+        
  </Physics>
       </Canvas>
-      
     </div>
   )
 }

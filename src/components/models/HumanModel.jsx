@@ -8,13 +8,15 @@ import { CapsuleCollider, RigidBody } from "@react-three/rapier";
    MAIN COMPONENT
 ========================================================= */
 
-export default function HumanCharacter() {
-  const characterRef = useRef();
+export default function HumanCharacter({ rigidBodyRef }) {
+  const modelRef = useRef();   // Physics
+       // Animations
+
   const pressedKeysRef = useKeyboardInput();
   const activeAnimationRef = useRef(null);
 
   const { scene, animations } = useGLTF("/models/optimized3.glb");
-  const { actions } = useAnimations(animations, characterRef);
+  const { actions } = useAnimations(animations, modelRef);
 
   const MOVEMENT = {
     walkSpeed: 2,
@@ -23,7 +25,7 @@ export default function HumanCharacter() {
   };
 
   useFrame((state, delta) => {
-    if (!characterRef.current || !actions) return;
+    if (!rigidBodyRef.current || !actions) return;
 
     const motionState = MotionStateDetector(pressedKeysRef);
 
@@ -35,36 +37,35 @@ export default function HumanCharacter() {
 
     RotationController({
       pressedKeysRef,
-      characterRef,
+      rigidBodyRef,   // ✅ rotate physics body
       delta,
       rotationSpeed: MOVEMENT.rotationSpeed,
     });
 
     MovementController({
       motionState,
-      characterRef,
-      delta,
+      rigidBodyRef,   // ✅ move physics body
       config: MOVEMENT,
     });
-
-    // CameraFollowSystem({
-    //   state,
-    //   characterRef,
-    // });
   });
 
   return (
-   <RigidBody
-  ref={characterRef}
-  colliders={false}
-  mass={1}
-  lockRotations
-  position={[0, 1, 0]}
->
-  <CapsuleCollider args={[0.5, 0.4]} />
-  <primitive object={scene} scale={0.5} />
-</RigidBody>
+    <RigidBody
+      ref={rigidBodyRef}
+      colliders={false}
+      mass={1}
+      enabledRotations={[true, true, false]}
+      position={[0.5, 3, 2]}
+    >
+      {/* <CapsuleCollider args={[0.5, 0.4]} /> */}
+      <CapsuleCollider args={[0.5, 0.1]} />
 
+
+      {/* Animations attach here */}
+      <group ref={modelRef} position={[0, -0.1, -0.24]}>
+        <primitive object={scene} scale={0.5} />
+      </group>
+    </RigidBody>
   );
 }
 
@@ -76,20 +77,15 @@ function useKeyboardInput() {
   const keys = useRef({});
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      keys.current[e.key.toLowerCase()] = true;
-    };
+    const down = (e) => (keys.current[e.key.toLowerCase()] = true);
+    const up = (e) => (keys.current[e.key.toLowerCase()] = false);
 
-    const handleKeyUp = (e) => {
-      keys.current[e.key.toLowerCase()] = false;
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
     };
   }, []);
 
@@ -98,20 +94,14 @@ function useKeyboardInput() {
 
 /* =========================================================
    MOTION STATE DETECTOR
-   (Decides what player is doing)
 ========================================================= */
 
 function MotionStateDetector(keysRef) {
-  const isForward = keysRef.current["w"];
-  const isBackward = keysRef.current["s"];
-  const isRunning = keysRef.current["shift"] && isForward;
-  const isJumping = keysRef.current[" "];
-
   return {
-    isForward,
-    isBackward,
-    isRunning,
-    isJumping,
+    isForward: keysRef.current["arrowup"],
+    isBackward: keysRef.current["arrowdown"],
+    isRunning: keysRef.current["shift"] && keysRef.current["arrowup"],
+    isJumping: keysRef.current[" "],
   };
 }
 
@@ -125,13 +115,13 @@ function AnimationController({
   activeAnimationRef,
 }) {
   const play = (name) => {
-    if (!actions || activeAnimationRef.current === name) return;
+    if (!actions[name] || activeAnimationRef.current === name) return;
 
     if (activeAnimationRef.current) {
       actions[activeAnimationRef.current]?.fadeOut(0.2);
     }
 
-    actions[name]?.reset().fadeIn(0.2).play();
+    actions[name].reset().fadeIn(0.2).play();
     activeAnimationRef.current = name;
   };
 
@@ -143,62 +133,80 @@ function AnimationController({
 }
 
 /* =========================================================
-   ROTATION CONTROLLER
+   ROTATION CONTROLLER (Physics Based)
 ========================================================= */
 
 function RotationController({
   pressedKeysRef,
-  characterRef,
+  rigidBodyRef,
   delta,
   rotationSpeed,
 }) {
-  if (pressedKeysRef.current["a"]) {
-    characterRef.current.rotation.y += rotationSpeed * delta;
+  if (!rigidBodyRef.current) return;
+
+  const rotation = rigidBodyRef.current.rotation();
+  const currentQuat = new THREE.Quaternion(
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w
+  );
+
+  const euler = new THREE.Euler().setFromQuaternion(currentQuat);
+
+  if (pressedKeysRef.current["arrowleft"]) {
+    euler.y += rotationSpeed * delta;
   }
 
-  if (pressedKeysRef.current["d"]) {
-    characterRef.current.rotation.y -= rotationSpeed * delta;
+  if (pressedKeysRef.current["arrowright"]) {
+    euler.y -= rotationSpeed * delta;
   }
+
+  const newQuat = new THREE.Quaternion().setFromEuler(euler);
+
+  rigidBodyRef.current.setRotation(newQuat, true);
 }
 
 /* =========================================================
-   MOVEMENT CONTROLLER
+   MOVEMENT CONTROLLER (Physics Based)
 ========================================================= */
 
 function MovementController({
   motionState,
-  characterRef,
-  delta,
+  rigidBodyRef,
   config,
 }) {
-  if (!motionState.isForward && !motionState.isBackward) return;
+  if (!rigidBodyRef.current) return;
 
   const speed = motionState.isRunning
     ? config.runSpeed
     : config.walkSpeed;
 
-  const forward = new THREE.Vector3(0, 0, 1);
-  forward.applyQuaternion(characterRef.current.quaternion);
-
-  const direction = motionState.isBackward ? -1 : 1;
-
-  characterRef.current.position.add(
-    forward.multiplyScalar(speed * delta * direction)
+  const rotation = rigidBodyRef.current.rotation();
+  const quaternion = new THREE.Quaternion(
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w
   );
-}
 
-/* =========================================================
-   CAMERA FOLLOW SYSTEM
-========================================================= */
+  const forward = new THREE.Vector3(0, 0, 1);
+  forward.applyQuaternion(quaternion);
 
-function CameraFollowSystem({ state, characterRef }) {
-  const offset = new THREE.Vector3(0, 3, -6);
-  offset.applyQuaternion(characterRef.current.quaternion);
+  let velocity = { x: 0, y: 0, z: 0 };
+  // const currentVel = rigidBodyRef.current.linvel();
 
-  const targetPosition = characterRef.current.position
-    .clone()
-    .add(offset);
+rigidBodyRef.current.setLinvel(velocity, true);
 
-  state.camera.position.lerp(targetPosition, 0.1);
-  state.camera.lookAt(characterRef.current.position);
+  if (motionState.isForward) {
+    velocity.x = forward.x * speed;
+    velocity.z = forward.z * speed;
+  }
+
+  if (motionState.isBackward) {
+    velocity.x = -forward.x * speed;
+    velocity.z = -forward.z * speed;
+  }
+
+  rigidBodyRef.current.setLinvel(velocity, true);
 }
