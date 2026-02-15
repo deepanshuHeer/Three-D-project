@@ -1,16 +1,14 @@
 import { useAnimations, useGLTF } from "@react-three/drei";
-import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { CapsuleCollider, RigidBody } from "@react-three/rapier";
 
 /* =========================================================
    MAIN COMPONENT
 ========================================================= */
 
-export default function HumanCharacter({ rigidBodyRef }) {
-  const modelRef = useRef();   // Physics
-       // Animations
+export default function HumanCharacter({modelRef}) {
+  // const modelRef = useRef();   // Physics
 
   const pressedKeysRef = useKeyboardInput();
   const activeAnimationRef = useRef(null);
@@ -21,11 +19,11 @@ export default function HumanCharacter({ rigidBodyRef }) {
   const MOVEMENT = {
     walkSpeed: 2,
     runSpeed: 5,
-    rotationSpeed: 2,
+    rotationSpeed: 0.5,
   };
 
   useFrame((state, delta) => {
-    if (!rigidBodyRef.current || !actions) return;
+    if (!modelRef.current || !actions) return;
 
     const motionState = MotionStateDetector(pressedKeysRef);
 
@@ -37,35 +35,31 @@ export default function HumanCharacter({ rigidBodyRef }) {
 
     RotationController({
       pressedKeysRef,
-      rigidBodyRef,   // ✅ rotate physics body
+      rigidBodyRef: modelRef,   // ✅ rotate physics body
       delta,
       rotationSpeed: MOVEMENT.rotationSpeed,
     });
 
     MovementController({
       motionState,
-      rigidBodyRef,   // ✅ move physics body
+      rigidBodyRef: modelRef,   // ✅ move physics body
       config: MOVEMENT,
     });
   });
 
+  useEffect(() => {
+  //  shadow properties
+  scene.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+    }
+  });
+  }, []);
+
   return (
-    <RigidBody
-      ref={rigidBodyRef}
-      colliders={false}
-      mass={1}
-      enabledRotations={[true, true, false]}
-      position={[0.5, 3, 2]}
-    >
-      {/* <CapsuleCollider args={[0.5, 0.4]} /> */}
-      <CapsuleCollider args={[0.5, 0.1]} />
-
-
-      {/* Animations attach here */}
-      <group ref={modelRef} position={[0, -0.1, -0.24]}>
-        <primitive object={scene} scale={0.5} />
-      </group>
-    </RigidBody>
+    <group ref={modelRef} >
+      <primitive object={scene} position={[0,0,-0.2]} scale={0.5} />
+    </group>
   );
 }
 
@@ -73,7 +67,7 @@ export default function HumanCharacter({ rigidBodyRef }) {
    KEYBOARD INPUT SYSTEM
 ========================================================= */
 
-function useKeyboardInput() {
+export function useKeyboardInput() {
   const keys = useRef({});
 
   useEffect(() => {
@@ -96,7 +90,7 @@ function useKeyboardInput() {
    MOTION STATE DETECTOR
 ========================================================= */
 
-function MotionStateDetector(keysRef) {
+export function MotionStateDetector(keysRef) {
   return {
     isForward: keysRef.current["arrowup"],
     isBackward: keysRef.current["arrowdown"],
@@ -144,69 +138,99 @@ function RotationController({
 }) {
   if (!rigidBodyRef.current) return;
 
-  const rotation = rigidBodyRef.current.rotation();
-  const currentQuat = new THREE.Quaternion(
-    rotation.x,
-    rotation.y,
-    rotation.z,
-    rotation.w
-  );
-
-  const euler = new THREE.Euler().setFromQuaternion(currentQuat);
+  const rotation = rigidBodyRef.current.rotation;
+  // const currentEuler = new THREE.Euler(rotation.x, rotation.y, rotation.z);
 
   if (pressedKeysRef.current["arrowleft"]) {
-    euler.y += rotationSpeed * delta;
+    rotation.y += Math.PI * rotationSpeed * delta;  // Rotate left
   }
 
   if (pressedKeysRef.current["arrowright"]) {
-    euler.y -= rotationSpeed * delta;
+    rotation.y -= Math.PI * rotationSpeed * delta;
   }
 
-  const newQuat = new THREE.Quaternion().setFromEuler(euler);
-
-  rigidBodyRef.current.setRotation(newQuat, true);
+  // rigidBodyRef.current.rotation.set(
+  //   currentEuler.x,
+  //   currentEuler.y,
+  //   currentEuler.z
+  // );
 }
 
 /* =========================================================
    MOVEMENT CONTROLLER (Physics Based)
 ========================================================= */
 
+// function MovementController({
+//   motionState,
+//   rigidBodyRef,
+//   config,
+// }) {
+//   if (!rigidBodyRef.current) return;
+
+//   const speed = motionState.isRunning
+//     ? config.runSpeed
+//     : config.walkSpeed;
+//   const direction = new THREE.Vector3();
+//   rigidBodyRef.current.getWorldDirection(direction);
+
+//   if (motionState.isRunning || motionState.isForward) {
+
+//     rigidBodyRef.current.position.add(
+//       direction.multiplyScalar(speed * 0.01)
+//     );
+//   }
+//   else if (motionState.isBackward) {
+//     rigidBodyRef.current.position.add(
+//       direction.multiplyScalar(-speed * 0.01)
+//     );
+//   }
+// }
+
+
 function MovementController({
   motionState,
   rigidBodyRef,
   config,
 }) {
-  if (!rigidBodyRef.current) return;
+  useFrame((_, delta) => {
+    if (!rigidBodyRef.current) return;
 
-  const speed = motionState.isRunning
-    ? config.runSpeed
-    : config.walkSpeed;
+    const model = rigidBodyRef.current;
 
-  const rotation = rigidBodyRef.current.rotation();
-  const quaternion = new THREE.Quaternion(
-    rotation.x,
-    rotation.y,
-    rotation.z,
-    rotation.w
-  );
+    const speed = motionState.isRunning
+      ? config.runSpeed
+      : config.walkSpeed;
 
-  const forward = new THREE.Vector3(0, 0, 1);
-  forward.applyQuaternion(quaternion);
+    const direction = new THREE.Vector3();
+    model.getWorldDirection(direction);
 
-  let velocity = { x: 0, y: 0, z: 0 };
-  // const currentVel = rigidBodyRef.current.linvel();
+    // Prevent vertical movement
+    direction.y = 0;
+    direction.normalize();
 
-rigidBodyRef.current.setLinvel(velocity, true);
+    if (motionState.isRunning || motionState.isForward) {
+      model.position.add(
+        direction.clone().multiplyScalar(speed * delta)
+      );
+    } else if (motionState.isBackward) {
+      model.position.add(
+        direction.clone().multiplyScalar(-speed * delta)
+      );
+    }
 
-  if (motionState.isForward) {
-    velocity.x = forward.x * speed;
-    velocity.z = forward.z * speed;
-  }
+    // 🧱 Boundary (Clamp Method)
+    model.position.x = THREE.MathUtils.clamp(
+      model.position.x,
+      -10,
+      10
+    );
 
-  if (motionState.isBackward) {
-    velocity.x = -forward.x * speed;
-    velocity.z = -forward.z * speed;
-  }
+    model.position.z = THREE.MathUtils.clamp(
+      model.position.z,
+      -10,
+      10
+    );
+  });
 
-  rigidBodyRef.current.setLinvel(velocity, true);
+  return null;
 }

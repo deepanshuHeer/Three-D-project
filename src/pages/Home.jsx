@@ -1,16 +1,75 @@
-import HumanCharacter from "../components/models/HumanModel"
-import Screen from "../components/Screen"
-import Maze from "../components/environment/Maze"
 import { useRef } from "react";
+import Ground from "../components/environment/Ground";
+import HumanCharacter from "../components/models/HumanModel";
+import Screen from "../components/Screen";
+import KeyLight from "../components/light/KeyLight";
+import FillLight from "../components/light/FillLight";
+import BgLight from "../components/light/BgLight";
+import { CameraControls, FaceLandmarker, MapControls, OrbitControls, OrthographicCamera, PerspectiveCamera, PointerLockControls, Stats, useHelper } from "@react-three/drei";
+import { CameraHelper } from "three";
+import { useFrame, useThree } from "@react-three/fiber";
+import FPSCamera from "../components/camera/FPSCamera";
+import Maze from "../components/environment/Maze";
 const Home = () => {
 
-    const rigidBodyRef = useRef();  
+    const rigidBodyRef = useRef();
+    const boxRef = useRef();
+
+
+
+
     return <>
-        <Screen rigidBodyRef={rigidBodyRef}> 
-            <HumanCharacter rigidBodyRef={rigidBodyRef} />
+        <Screen rigidBodyRef={rigidBodyRef}>
+            <KeyLight />
+            <FillLight />
+            <BgLight />
+            <mesh ref={boxRef} position={[-1, 0, 0]} receiveShadow castShadow>
+                <boxGeometry args={[0.5, 0.5, 0.5]} />
+                <meshStandardMaterial color="white" roughness={0.5} metalness={0.5} />
+            </mesh>
+            <mesh position={[1, 0, 0]} receiveShadow castShadow>
+                <boxGeometry args={[0.5, 0.5, 0.5]} />
+                <meshStandardMaterial color="yellow" roughness={0.5} metalness={0.5} />
+            </mesh>
+            {/* <axesHelper args={[10]} /> */}
+
+            <MapControls />
+            <Stats />
             <Maze/>
+            <FPSCamera targetRef={rigidBodyRef} />
+            <HumanCharacter modelRef={rigidBodyRef} />
+            <Ground />
         </Screen>
     </>
 }
 
 export default Home
+
+const LightHelper = ({ cameraRef }) => {
+    const { camera } = useThree()
+    return (
+        <>
+            <PointerLockControls ref={camera} position={[0, 0, 10]} />
+        </>
+    )
+}
+
+export function ThirdPersonCamera({ targetRef, offset = [0, 3, 6] }) {
+    useFrame(({ camera }) => {
+        if (!targetRef.current) return;
+
+        const targetPos = new THREE.Vector3();
+        targetRef.current.getWorldPosition(targetPos);
+
+        // Desired camera position behind the character
+        const desiredPos = targetPos.clone().add(
+            new THREE.Vector3(...offset)
+        );
+
+        // Smooth lerp for smooth following
+        camera.position.lerp(desiredPos, 0.1);
+        camera.lookAt(targetPos);
+    });
+
+    return null;
+}

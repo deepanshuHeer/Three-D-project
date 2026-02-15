@@ -6,9 +6,9 @@ function Maze() {
     const { scene } = useGLTF("/models/updatedMaze.glb");
 
     return <>
-        <RigidBody type="fixed" colliders="trimesh" >
-            <primitive  object={scene}  />
-        </RigidBody>
+        {/* <RigidBody type="fixed" colliders="trimesh" > */}
+            <primitive  object={scene} position={[0,-0.8,0]}  />
+        {/* </RigidBody> */}
     </>
 }
 

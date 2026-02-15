@@ -5,7 +5,7 @@ import { useRef } from 'react'
 function FillLight() {
   const lightRef = useRef()
 
-  useHelper(lightRef, DirectionalLightHelper, 1, 'black')
+  // useHelper(lightRef, DirectionalLightHelper, 1, 'black')
 
   return (
     <directionalLight
