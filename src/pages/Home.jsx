@@ -5,39 +5,38 @@ import Screen from "../components/Screen";
 import KeyLight from "../components/light/KeyLight";
 import FillLight from "../components/light/FillLight";
 import BgLight from "../components/light/BgLight";
-import { CameraControls, FaceLandmarker, MapControls, OrbitControls, OrthographicCamera, PerspectiveCamera, PointerLockControls, Stats, useHelper } from "@react-three/drei";
+import { CameraControls, FaceLandmarker, MapControls, OrbitControls, OrthographicCamera, PerspectiveCamera, PointerLockControls, Sphere, Stats, useHelper } from "@react-three/drei";
 import { CameraHelper } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import FPSCamera from "../components/camera/FPSCamera";
 import Maze from "../components/environment/Maze";
+import CameraManager from "../components/camera/CameraManager";
+import { CuboidCollider, RigidBody } from "@react-three/rapier";
 const Home = () => {
 
     const rigidBodyRef = useRef();
     const boxRef = useRef();
 
-
-
-
     return <>
-        <Screen rigidBodyRef={rigidBodyRef}>
+        <Screen>
+            <Stats />
+            <MapControls />
+
             <KeyLight />
             <FillLight />
             <BgLight />
-            <mesh ref={boxRef} position={[-1, 0, 0]} receiveShadow castShadow>
-                <boxGeometry args={[0.5, 0.5, 0.5]} />
-                <meshStandardMaterial color="white" roughness={0.5} metalness={0.5} />
-            </mesh>
-            <mesh position={[1, 0, 0]} receiveShadow castShadow>
-                <boxGeometry args={[0.5, 0.5, 0.5]} />
-                <meshStandardMaterial color="yellow" roughness={0.5} metalness={0.5} />
-            </mesh>
-            {/* <axesHelper args={[10]} /> */}
+            
+            <CameraManager mode={"fps"} targetRef={rigidBodyRef} />
+            
+            <RigidBody position={[0, 2, 0]} colliders='cuboid'>
+                <mesh ref={boxRef} position={[-1, 0, 0]} wireframe receiveShadow castShadow>
+                    <boxGeometry args={[0.5, 0.5, 0.5]} />
+                    <meshStandardMaterial color="red" roughness={0.5} metalness={0.5} />
+                </mesh>
+            </RigidBody>
 
-            <MapControls />
-            <Stats />
-            <Maze/>
-            <FPSCamera targetRef={rigidBodyRef} />
-            <HumanCharacter modelRef={rigidBodyRef} />
+            {/* <Maze /> */}
+                <HumanCharacter rigidBodyRef={rigidBodyRef} />
             <Ground />
         </Screen>
     </>

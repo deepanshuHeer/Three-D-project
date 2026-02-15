@@ -2,26 +2,36 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 const FPSCamera = ({ targetRef }) => {
-
 useFrame((state) => {
-  if (!targetRef.current) return;
+  const body = targetRef.current;
+  if (!body) return;
 
-  const model = targetRef.current;
+  const position = body.translation();
+  const rotation = body.rotation();
 
-  // Offset behind model
-  const offset = new THREE.Vector3(0, 1.5, -3);
+  const bodyPosition = new THREE.Vector3(
+    position.x,
+    position.y,
+    position.z
+  );
 
-  // Rotate offset based on model rotation
-  offset.applyQuaternion(model.quaternion);
+  const quaternion = new THREE.Quaternion(
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w
+  );
 
-  const targetPosition = model.position.clone().add(offset);
+  const offset = new THREE.Vector3(0, 0.5, -1);
+  offset.applyQuaternion(quaternion);
+
+  const targetPosition = bodyPosition.clone().add(offset);
 
   state.camera.position.lerp(targetPosition, 0.1);
-  state.camera.lookAt(model.position);
+  state.camera.lookAt(bodyPosition);
 });
 
   return null;
-  //  <PointerLockControls /> 
 }
 
 export default FPSCamera
